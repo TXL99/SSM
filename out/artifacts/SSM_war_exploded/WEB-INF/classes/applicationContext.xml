@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+	http://www.springframework.org/schema/aop
+	http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+	http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context-3.2.xsd
+    http://www.springframework.org/schema/tx
+    http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+    http://www.springframework.org/schema/mvc
+    http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+    
+    <!-- 创建spring框加提供的数据源对象 -->
+    <bean name="abc" class="org.apache.commons.dbcp.BasicDataSource">
+     	<property name="driverClassName" value="com.mysql.jdbc.Driver"></property>
+     	<property name="url" value="jdbc:mysql://localhost:3306/easybuy"></property>
+     	<property name="password" value="121699"></property>
+     	<property name="username" value="TXL"></property>
+     </bean>
+     
+    <!-- 创建spring和mybatis整合后用的工厂对象  配置MyBatis工厂SqlSessionFactory -->
+     <bean id="fact" class="org.mybatis.spring.SqlSessionFactoryBean">
+       <!--  注入数据源 -->
+     	<property name="dataSource" ref="abc"></property>
+     	  <!-- 指定核MyBatis心配置文件位置 -->
+     	<property name="configLocation" value="classpath:mybatis-config.xml"></property>
+     </bean>
+
+     <!-- Mapper映射文件扫描器，能把包下面的所有mapper映射文件，创建成接口的实现对象 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!-- 扫描的包 -->
+    	<property name="basePackage" value="com.xkit.textssm.dao"></property>
+    	<property name="sqlSessionFactoryBeanName" value="fact"></property>
+    </bean>
+    
+ 
+    	<!-- 基于注解的处理器 -->
+	<context:component-scan base-package="com.xkit.textssm.controller,com.xkit.textssm.service.impl" />
+	
+
+    
+    <!-- 配置spring的事务 提交 关闭-->
+	<bean name="trans" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="abc"></property>
+	</bean>
+	
+	<!-- 配置事务的级别 -->
+	<tx:advice id="txAdvice" transaction-manager="trans">
+		<tx:attributes>
+			<tx:method name="add*" propagation="REQUIRED"/><!-- 必须开启事务 -->
+			<tx:method name="delete*" propagation="REQUIRED"/><!-- 必须开启事务 -->
+			<tx:method name="update*" propagation="REQUIRED"/><!-- 必须开启事务 -->
+			<tx:method name="*" read-only="true" propagation="SUPPORTS"/><!-- spring不会给你开启事务 -->
+		</tx:attributes>
+	</tx:advice>
+	
+		<!-- @RequestMapping：通过请求URL进行映射 -->
+   <!-- 使用注解驱动方式配置 控制器映射器和控制器适配器 -->
+<!--     <mvc:annotation-driven>
+          配置springmvc的消息 (响应数据)转换器
+           <mvc:message-converters>
+               <bean class="org.springframework.http.converter.StringHttpMessageConverter">
+                   <property name="supportedMediaTypes">
+                        <list>解决乱码
+                             <value>application/json;charset=utf-8</value>
+                             <value>text/plain;charset=Utf-8</value>
+                        </list>
+                   </property>
+               </bean>
+          </mvc:message-converters> 
+    </mvc:annotation-driven> -->
+    
+       <!-- 使用注解驱动方式配置 控制器映射器和控制器适配器 -->
+    <!--conversion-service="myDateTime" 转换器工厂对象替换到适配器中默认的转换器-->
+    <mvc:annotation-driven conversion-service="myDateTime">
+          <!-- 配置springmvc的消息 (响应数据)转换器  -->
+           <mvc:message-converters>
+                 <!--      配置springmvc的消息 (响应数据)转换器 -->
+                 <bean class="org.springframework.http.converter.StringHttpMessageConverter">
+                   <property name="supportedMediaTypes">
+                        <list><!-- 解决乱码 -->
+                             <value>application/json;charset=utf-8</value>
+                             <value>text/plain;charset=Utf-8</value>
+                        </list>
+                   </property>
+               </bean>
+               <!--阿里巴巴提供的消息转换器 -->
+               <bean class="com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter">
+                   <property name="supportedMediaTypes">
+                        <list><!-- 解决ajax乱码 -->
+                             <value>application/json;charset=utf-8</value>
+                             <value>text/plain;charset=Utf-8</value>
+                        </list>
+                   </property>
+                  <!--  解决FastJson工具在转日期属性为json字符串中，变数字问题 -->
+                   <property name="features">
+                       <list>
+                           <value>WriteDateUseDateFormat</value>
+                       </list>
+                   </property>
+               </bean>
+          </mvc:message-converters> 
+    </mvc:annotation-driven>
+	  
+	
+	<!-- 完成视图的对应 -->
+	<!-- 对转向页面的路径解析。prefix：前缀， suffix：后缀 -->
+	 <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver" >
+		<property name="prefix" value="/"/>
+		<property name="suffix" value=".jsp"/> 
+	</bean> 
+	
+	<!-- 异常 -->
+	<bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+	     <property name="exceptionMappings">
+	          <props>
+	             <prop key="java.lang.Exception">error</prop>
+	          </props>
+	     </property>
+	</bean>
+    
+   <!--  配置文件上传解析器 MultipartResolver -->
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+    <!-- 文件上传最大值 MB-->
+          <property name="maxUploadSize">
+              <value>12888866</value>
+          </property>
+         <!--  设置请求编码格式 -->
+         <property name="defaultEncoding" value="UTF-8"/>
+    </bean>
+    
+  <!--   RESTful 来忽略以下目录 -->
+    <mvc:resources location="/js/" mapping="/js/**" />
+    <mvc:resources location="/css/" mapping="/css/**" />
+    <mvc:resources location="/filepath/" mapping="/filepath/**" />
+    <mvc:resources location="/images/" mapping="/images/**" />
+    <mvc:resources location="/scripts/" mapping="/scripts/**" />
+    
+   <!--  自定义转换器 时间-->
+    <bean id="myDateTime" class="org.springframework.context.support.ConversionServiceFactoryBean">
+        <property name="converters">
+             <list>
+                 <bean class="com.xkit.textssm.converters.DateTime"></bean>
+             </list>
+        </property>
+    </bean>
+
+    <!--拦截器-->
+    <mvc:interceptors>
+        <mvc:interceptor>
+            <!--拦截所有-->
+            <mvc:mapping path="/**"/>
+            <!--放行 不拦截-->
+            <mvc:exclude-mapping path="/login.jsp"/>
+            <mvc:exclude-mapping path="/login.action"/>
+            <!--拦截之后 跳转到哪里-->
+            <bean class="com.xkit.textssm.interceptors.interceptorTest"></bean>
+        </mvc:interceptor>
+    </mvc:interceptors>
+    
+    
+</beans>
